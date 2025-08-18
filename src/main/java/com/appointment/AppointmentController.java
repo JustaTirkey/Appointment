@@ -16,7 +16,7 @@ public class AppointmentController {
 
         try {
             Connection con = DriverManager.getConnection(
-                    "jdbc:mysql://localhost:3306/appointment_system", "user (generally root)", "dummyPassword");
+                    "Your database url", "user (generally root)", "dummyPassword");
 
             Statement stmt = con.createStatement();
             ResultSet rs = stmt.executeQuery(
