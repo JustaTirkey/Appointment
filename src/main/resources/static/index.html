@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Login</title>
+</head>
+<body>
+    <h2>Login</h2>
+    <form id="loginForm">
+        Username: <input type="text" id="username" required /><br />
+        Password: <input type="password" id="password" required /><br />
+        <button type="submit">Login</button>
+    </form>
+    <p id="response"></p>
+
+    <script>
+        document.getElementById('loginForm').onsubmit = async function(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const url = `/login?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+            // const url = `/login?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+
+            const resp = await fetch(url);
+            const data = await resp.json();
+
+            if(data.error) {
+                document.getElementById('response').innerText = data.error;
+            } else {
+                // Redirect based on role with username as query param
+                if(data.role === 'student') {
+                    window.location.href = `/student-profile.html?username=${encodeURIComponent(username)}`;
+                } else if(data.role === 'professor') {
+                    window.location.href = `/professor-profile.html?username=${encodeURIComponent(username)}`;
+                } else {
+                    document.getElementById('response').innerText = "Could not determine role.";
+                }
+            }
+        }
+    </script>
+</body>
+</html>

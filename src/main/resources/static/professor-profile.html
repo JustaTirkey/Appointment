@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Professor Profile</title>
+</head>
+<body>
+    <h1>Professor Profile</h1>
+    
+    <button id="logoutButton">Logout</button>
+    <hr>
+    
+    <div id="profile">Loading...</div>
+    <script>
+        // Get username from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const username = urlParams.get('username');
+        
+        if (username) {
+            fetch(`/api/professor/${username}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('profile').innerHTML = `
+                        <p>Name: ${data.name}</p>
+                        <p>Department: ${data.deptName}</p>
+                        <p>ID: ${data.id}</p>
+                    `;
+                })
+                .catch(err => {
+                    document.getElementById('profile').innerText = "Could not load profile info.";
+                });
+        } else {
+            document.getElementById('profile').innerText = "No professor specified!";
+        }
+    </script>
+
+    <div>
+    <label for="profIdInput">Enter Professor ID:</label>
+    <input type="number" id="profIdInput" />
+    <button onclick="fetchSchedule()">Show Professor Schedule</button>
+    </div>
+    <div id="schedule"></div>
+
+    <script>
+        function fetchSchedule() {
+            const profId = document.getElementById('profIdInput').value;
+            if (!profId) {
+                document.getElementById('schedule').innerText = 'Please enter a professor ID.';
+                return;
+            }
+            fetch(`/api/professor/${profId}/schedule`)
+                .then(resp => resp.json())
+                .then(data => {
+                    if (data.error) {
+                        document.getElementById('schedule').innerText = data.error;
+                    } else if (Array.isArray(data) && data.length) {
+                        let table = `
+                            <h2>Professor Schedule</h2>
+                            <table border="1" cellpadding="5" cellspacing="0">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Start Time</th>
+                                    <th>End Time</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Description</th>
+                                </tr>`;
+                        data.forEach(row => {
+                            table += `
+                                <tr>
+                                    <td>${row.date}</td>
+                                    <td>${row.start_time}</td>
+                                    <td>${row.end_time}</td>
+                                    <td>${row.type}</td>
+                                    <td>${row.status}</td>
+                                    <td>${row.description || ''}</td>
+                                </tr>`;
+                        });
+                        table += '</table>';
+                        document.getElementById('schedule').innerHTML = table;
+                    } else {
+                        document.getElementById('schedule').innerText = 'No schedule found for this professor.';
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('schedule').innerText = 'Error fetching schedule.';
+                });
+        }
+    </script>
+    
+    <script>
+        document.getElementById('logoutButton').addEventListener('click', function() {
+            // Optional: You can clear any session/local storage here if you are using it.
+            // e.g., localStorage.removeItem('user');
+
+            // Redirect to the login page
+            window.location.href = '/index.html';
+        });
+    </script>
+    
+</body>
+</html>

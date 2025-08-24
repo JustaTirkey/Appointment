@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Student Profile</title>
+</head>
+<body>
+    <h1>Student Profile</h1>
+
+    <button id="logoutButton">Logout</button>
+    <hr>
+
+    <div id="profile">Loading...</div>
+    <script>
+        let currentStudent = null;
+        // Get username from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const username = urlParams.get('username');
+        
+        if (username) {
+            fetch(`/api/student/${username}`)
+            .then(response => response.json())
+            .then(data => {
+                    currentStudent = data; 
+                    document.getElementById('profile').innerHTML = `
+                        <p>Name: ${data.name}</p>
+                        <p>Department: ${data.deptName}</p>
+                        <p>Total Credits: ${data.totCred}</p>
+                    `;
+                })
+                .catch(err => {
+                    document.getElementById('profile').innerText = "Could not load profile info.";
+                });
+        } else {
+            document.getElementById('profile').innerText = "No student specified!";
+        }
+    </script>
+
+    <div>
+    <label for="profIdInput">Enter Professor ID:</label>
+    <input type="number" id="profIdInput" />
+    <button onclick="fetchSchedule()">Show Schedule</button>
+    </div>
+
+    <div id="schedule"></div>
+
+    <script>
+        function fetchSchedule() {
+            const profId = document.getElementById('profIdInput').value;
+            if (!profId) {
+                document.getElementById('schedule').innerText = 'Please enter a professor ID.';
+                return;
+            }
+
+            fetch(`/api/professor/${profId}/schedule`)
+                .then(resp => resp.json())
+                .then(data => {
+                    if (data.error) {
+                        document.getElementById('schedule').innerText = data.error;
+                    } else if (Array.isArray(data) && data.length) {
+                        let table = `
+                            <h2>Professor ${profId} Schedule</h2>
+                            <table border="1" cellpadding="5" cellspacing="0">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Start Time</th>
+                                    <th>End Time</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Description</th>
+                                    <th>Action</th>
+                                </tr>`;
+                        data.forEach((row, index) => {
+                            table += `
+                                <tr>
+                                    <td>${row.date}</td>
+                                    <td>${row.start_time}</td>
+                                    <td>${row.end_time}</td>
+                                    <td>${row.type}</td>
+                                    <td id="status-${index}">${row.status}</td>
+                                    <td>${row.description || ''}</td>
+                                    <td>`;
+                            if (row.status === "free") {
+                                table += `<button onclick="requestSlot(this, ${profId}, '${row.date}', '${row.start_time}', '${row.end_time}', ${index})">Request</button>`;
+                            } else {
+                                table += `-`;
+                            }
+                            table += `</td></tr>`;
+                        });
+                        table += '</table>';
+                        document.getElementById('schedule').innerHTML = table;
+                    } else {
+                        document.getElementById('schedule').innerText = 'No schedule found for this professor.';
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('schedule').innerText = 'Error fetching schedule.';
+                });
+        }
+
+        function requestSlot(buttonElement, profId, date, startTime, endTime, index) {
+            if (!currentStudent || !currentStudent.id) {
+                alert("Student not loaded.");
+                return;
+            }
+
+            const description = prompt("Please enter a brief reason for the meeting:", "Meeting");
+            if (description === null) {
+                return;
+            }
+
+            // Immediately disable the button to prevent double-clicks
+            buttonElement.disabled = true;
+            buttonElement.innerText = "Requesting...";
+
+            fetch(`/api/professor/${profId}/requestSlot`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    studentId: currentStudent.id,
+                    date: date,
+                    start_time: startTime,
+                    end_time: endTime,
+                    description: description
+                })
+            })
+            .then(resp => {
+                if (!resp.ok) {
+                    return resp.json().then(err => { throw new Error(err.error) });
+                }
+                return resp.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // The button is already disabled, just confirm the text
+                    buttonElement.innerText = "Requested"; 
+                    document.getElementById(`status-${index}`).innerText = "requested";
+                    alert("Slot requested successfully!");
+                }
+            })
+            .catch(error => {
+                alert(error.message || "Failed to request slot.");
+                // Re-enable the button if the request fails
+                buttonElement.disabled = false; 
+                buttonElement.innerText = "Request";
+            });
+        }
+    </script>
+
+    <script>
+        document.getElementById('logoutButton').addEventListener('click', function() {
+            // Redirect to the login page
+            window.location.href = '/index.html';
+        });
+    </script>
+
+</body>
+</html>
