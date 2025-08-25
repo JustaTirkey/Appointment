@@ -11,6 +11,8 @@
     <hr>
     
     <div id="profile">Loading...</div>
+    <input type="hidden" id="profIdValue" /> <!-- hidden field for professor ID -->
+
     <script>
         // Get username from URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -23,10 +25,13 @@
                     document.getElementById('profile').innerHTML = `
                         <p>Name: ${data.name}</p>
                         <p>Department: ${data.deptName}</p>
-                        <p>ID: ${data.id}</p>
+                        <p>ID: <span id="profIdDisplay">${data.id}</span></p>
                     `;
+                    // store ID in hidden field
+                    document.getElementById('profIdValue').value = data.id;
+                    fetchRequests(); // auto-load requests when profile loads
                 })
-                .catch(err => {
+                .catch(() => {
                     document.getElementById('profile').innerText = "Could not load profile info.";
                 });
         } else {
@@ -34,16 +39,17 @@
         }
     </script>
 
+    <!-- Schedule Section -->
     <div>
-    <label for="profIdInput">Enter Professor ID:</label>
-    <input type="number" id="profIdInput" />
-    <button onclick="fetchSchedule()">Show Professor Schedule</button>
+        <label for="profIdInput">Enter Professor ID:</label>
+        <input type="number" id="profIdInput" />
+        <button onclick="fetchSchedule()">Show Professor Schedule</button>
     </div>
     <div id="schedule"></div>
 
     <script>
         function fetchSchedule() {
-            const profId = document.getElementById('profIdInput').value;
+            const profId = document.getElementById('profIdInput').value || document.getElementById('profIdValue').value;
             if (!profId) {
                 document.getElementById('schedule').innerText = 'Please enter a professor ID.';
                 return;
@@ -90,13 +96,112 @@
     
     <script>
         document.getElementById('logoutButton').addEventListener('click', function() {
-            // Optional: You can clear any session/local storage here if you are using it.
-            // e.g., localStorage.removeItem('user');
-
-            // Redirect to the login page
             window.location.href = '/index.html';
         });
     </script>
-    
+
+    <!-- Meeting Requests Section -->
+    <hr>
+    <h2>Meeting Requests</h2>
+    <div id="requests">Loading requests...</div>
+
+    <script>
+    function fetchRequests() {
+        let profId = document.getElementById('profIdValue').value;
+        if (!profId) {
+            document.getElementById('requests').innerText = "Cannot determine professor ID!";
+            return;
+        }
+        fetch(`/api/professor/${profId}/requests`)
+            .then(resp => resp.json())
+            .then(data => {
+                if (Array.isArray(data) && data.length) {
+                    let table = `
+                        <table border="1" cellpadding="5" cellspacing="0">
+                            <tr>
+                                <th>Requester Name</th>
+                                <th>Date</th>
+                                <th>Start Time</th>
+                                <th>End Time</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>`;
+                    data.forEach(request => {
+                        table += `
+                            <tr>
+                                <td>${request.studentName}</td>
+                                <td>${request.date}</td>
+                                <td>${request.startTime}</td>
+                                <td>${request.endTime}</td>
+                                <td>${request.description || ''}</td>
+                                <td>${request.status}</td>
+                                <td>
+                                    <button onclick="handleRequest(${request.requestId}, 'accept')">Accept</button>
+                                    <button onclick="handleRequest(${request.requestId}, 'reject')">Reject</button>
+                                </td>
+                            </tr>`;
+                    });
+                    table += '</table>';
+                    document.getElementById('requests').innerHTML = table;
+                } else {
+                    document.getElementById('requests').innerText = "No requests found.";
+                }
+            })
+            .catch(() => {
+                document.getElementById('requests').innerText = "Error fetching requests.";
+            });
+    }
+
+    function handleRequest(requestId, action) {
+        fetch(`/api/request/${requestId}/${action}`, { method: 'POST' })
+            .then(resp => resp.json())
+            .then(data => {
+                alert(data.message);
+                fetchRequests(); // refresh after update
+            })
+            .catch(() => {
+                alert("Error updating request.");
+            });
+    }
+    </script>
+
+    <hr>
+    <h2>Float a Free Slot</h2>
+    <form id="slotForm">
+        <label>Date: <input type="date" name="date" required></label><br>
+        <label>Start Time: <input type="time" name="startTime" required></label><br>
+        <label>End Time: <input type="time" name="endTime" required></label><br>
+        <label>Type: <input type="text" name="type" required></label><br>
+        <label>Description: <input type="text" name="description"></label><br>
+        <button type="submit">Float Slot</button>
+    </form>
+    <div id="slotResponse"></div>
+
+    <script>
+    document.getElementById('slotForm').onsubmit = async function(e) {
+        e.preventDefault();
+        const urlParams = new URLSearchParams(window.location.search);
+        const profId = urlParams.get('username') || document.getElementById('profIdInput').value; // Adjust based on your ID source
+
+        const form = e.target;
+        const data = {
+            date: form.date.value,
+            startTime: form.startTime.value,
+            endTime: form.endTime.value,
+            type: form.type.value,
+            description: form.description.value
+        };
+
+        const resp = await fetch(`/api/professor/${profId}/calendar/slots`, {
+            method: 'POST',
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+        const result = await resp.json();
+        document.getElementById('slotResponse').innerText = result.message || result.error || 'Response handled.';
+    };
+    </script>
+
 </body>
 </html>

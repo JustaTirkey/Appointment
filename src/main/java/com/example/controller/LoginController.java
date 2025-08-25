@@ -1,12 +1,18 @@
 package com.example.controller;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class LoginController {
@@ -15,7 +21,7 @@ public class LoginController {
     public ResponseEntity<?> login(@RequestParam String username, @RequestParam String password) {
         String url = "jdbc:mysql://localhost:3306/university_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC";
         String dbUser = "root";
-        String dbPass = "your password"; // add your password 
+        String dbPass = "your_password!"; // add your password 
 
         // ✅ Fixed queries: fetch whole row
         String studentQuery = "SELECT * FROM student WHERE username = ? AND password = ?";
